@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-dm-serif: 'DM Serif Display', Georgia, serif;
+  --font-outfit: 'Outfit', system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-outfit);
+    background-color: #0d1a08;
+    color: #3D2B1F;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-dm-serif);
+  }
+}
+
+@layer utilities {
+  .font-serif {
+    font-family: var(--font-dm-serif);
+  }
+  .font-sans {
+    font-family: var(--font-outfit);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #EDE8D5; }
+::-webkit-scrollbar-thumb { background: #7AAB3A; border-radius: 3px; }
+
+/* Cart drawer overlay */
+.cart-overlay {
+  animation: overlayIn 0.25s ease-out;
+}
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Product card hover effect */
+.product-img-zoom {
+  transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.group:hover .product-img-zoom {
+  transform: scale(1.06);
+}
