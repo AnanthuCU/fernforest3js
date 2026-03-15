@@ -228,6 +228,7 @@ export default function MicrogreensScene() {
 
     /* ── resize ── */
     function onResize() {
+      if (!mount) return;
       const w = mount.clientWidth  || window.innerWidth;
       const h = mount.clientHeight || window.innerHeight;
       cam.aspect = w / h;
@@ -241,7 +242,7 @@ export default function MicrogreensScene() {
       window.removeEventListener("resize", onResize);
       unsubscribe();
       renderer.dispose();
-      if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement);
+      if (mount && mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement);
     };
   }, []);
 
