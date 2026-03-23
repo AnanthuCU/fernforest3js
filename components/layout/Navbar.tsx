@@ -17,6 +17,18 @@ export function Navbar() {
   const totalItems = getTotalItems();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const handleScrollClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (href.startsWith("/#") && window.location.pathname === "/") {
+      const id = href.replace("/#", "");
+      const el = document.getElementById(id);
+      if (el) {
+        e.preventDefault();
+        el.scrollIntoView({ behavior: "smooth" });
+        window.history.pushState(null, "", href);
+      }
+    }
+  };
+
   return (
     <>
       <header className="fixed top-0 left-0 right-0 z-50 bg-cream/95 backdrop-blur-md border-b border-sage/15">
@@ -36,6 +48,7 @@ export function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
+                  onClick={(e) => handleScrollClick(e, link.href)}
                   className="text-sm font-medium text-bark hover:text-leaf transition-colors"
                 >
                   {link.label}
@@ -88,7 +101,10 @@ export function Navbar() {
                 key={link.href}
                 href={link.href}
                 className="text-sm font-medium text-bark hover:text-leaf"
-                onClick={() => setMobileOpen(false)}
+                onClick={(e) => {
+                  setMobileOpen(false);
+                  handleScrollClick(e, link.href);
+                }}
               >
                 {link.label}
               </Link>

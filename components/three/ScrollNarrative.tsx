@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { subscribeScrollProgress } from "@/lib/scrollProgress";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 /* Each phase: visible between scrollStart and scrollEnd (0-1 of total hero scroll) */
 const PHASES = [
@@ -43,61 +44,44 @@ const PHASES = [
   },
 ];
 
-function calcOpacity(p: number, ph: typeof PHASES[0]): number {
-  if (p < ph.in || p > ph.end) return 0;
-  if (p < ph.mid) return (p - ph.in) / (ph.mid - ph.in);
-  if (p < ph.out) return 1;
-  return 1 - (p - ph.out) / (ph.end - ph.out);
-}
-
-function calcY(op: number, p: number, ph: typeof PHASES[0]): number {
-  /* slide up on entry, slide up further on exit */
-  const entering = p < (ph.mid + ph.out) / 2;
-  return entering ? (1 - op) * 28 : (1 - op) * -28;
-}
-
-function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
-
 export default function ScrollNarrative() {
   const refs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
-    let targetP = 0;
-    const unsubscribe = subscribeScrollProgress((p) => { targetP = p; });
+    gsap.registerPlugin(ScrollTrigger);
 
-    let currentP = 0;
-    let initialized = false;
-    let rafId: number;
-
-    const tick = () => {
-      rafId = requestAnimationFrame(tick);
-      if (!initialized) {
-        currentP = targetP;
-        initialized = true;
+    const tl = gsap.timeline({
+      scrollTrigger: {
+        trigger: "#hero-scroll-container",
+        start: "top top",
+        end: "bottom bottom",
+        scrub: 1.5,
       }
-      currentP = lerp(currentP, targetP, 0.08);
+    });
 
-      const diff = Math.abs(targetP - currentP);
-      let leapMult = 1;
-      if (diff > 0.03) {
-        leapMult = 1 - Math.min((diff - 0.03) / 0.07, 1);
-      }
+    PHASES.forEach((ph, i) => {
+      const el = refs.current[i];
+      if (!el) return;
 
-      PHASES.forEach((ph, i) => {
-        const el = refs.current[i];
-        if (!el) return;
-        const rawOp = calcOpacity(currentP, ph);
-        const op = rawOp * leapMult;
-        const dy = calcY(op, currentP, ph);
-        el.style.opacity = String(op);
-        el.style.transform = `translateY(calc(-50% + ${dy}px))`;
-      });
-    };
-    tick();
+      const inDuration = ph.mid - ph.in;
+      const outDuration = ph.end - ph.out;
+
+      // Animate In
+      tl.fromTo(el, 
+        { opacity: 0, y: 28 },
+        { duration: inDuration, opacity: 1, y: 0, ease: "power2.out" },
+        ph.in
+      );
+
+      // Animate Out
+      tl.to(el, 
+        { duration: outDuration, opacity: 0, y: -28, ease: "power2.in" },
+        ph.out
+      );
+    });
 
     return () => {
-      unsubscribe();
-      cancelAnimationFrame(rafId);
+      tl.kill();
     };
   }, []);
 

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { subscribeScrollProgress } from "@/lib/scrollProgress";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 
 const DOTS = [
   { label: "Seed", from: 0.00, to: 0.25 },
@@ -10,7 +11,6 @@ const DOTS = [
   { label: "Harvest", from: 0.75, to: 1.00 },
 ];
 
-function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
 
 export default function ScrollProgress() {
   /* Use DOM refs instead of React state — avoids re-render on every scroll tick */
@@ -20,63 +20,46 @@ export default function ScrollProgress() {
   const trackRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    let targetP = 0;
-    const unsubscribe = subscribeScrollProgress((p) => { targetP = p; });
+    gsap.registerPlugin(ScrollTrigger);
 
-    let currentP = 0;
-    let initialized = false;
-    let rafId: number;
+    const st = ScrollTrigger.create({
+      trigger: "#hero-scroll-container",
+      start: "top top",
+      end: "bottom bottom",
+      onUpdate: (self) => {
+        const p = self.progress;
 
-    const tick = () => {
-      rafId = requestAnimationFrame(tick);
-      if (!initialized) {
-        currentP = targetP;
-        initialized = true;
-      }
-      currentP = lerp(currentP, targetP, 0.08);
+        const active = DOTS.findIndex((d) => p >= d.from && p < d.to);
+        const realActive = p >= 1 ? DOTS.length - 1 : active;
 
-      const diff = Math.abs(targetP - currentP);
-      let leapOp = 1;
-      if (diff > 0.03) {
-        leapOp = Math.max(0, 1 - (diff - 0.03) / 0.07);
-      }
+        DOTS.forEach((_, i) => {
+          const dot = dotRefs.current[i];
+          const txt = textRefs.current[i];
+          const isActive = i === realActive;
+          const isPast = i < realActive;
 
-      if (containerRef.current) {
-        containerRef.current.style.opacity = String(leapOp);
-      }
+          if (dot) {
+            dot.style.width = isActive ? "10px" : "6px";
+            dot.style.height = isActive ? "10px" : "6px";
+            dot.style.background = isActive
+              ? "#b8d96b"
+              : isPast ? "rgba(122,171,58,0.55)" : "rgba(255,255,255,0.18)";
+            dot.style.boxShadow = isActive ? "0 0 8px #b8d96b88" : "none";
+          }
+          if (txt) {
+            txt.style.color = isActive
+              ? "rgba(184,217,107,0.9)" : "rgba(255,255,255,0.22)";
+          }
+        });
 
-      const active = DOTS.findIndex((d) => currentP >= d.from && currentP < d.to);
-      const realActive = currentP >= 1 ? DOTS.length - 1 : active;
-
-      DOTS.forEach((_, i) => {
-        const dot = dotRefs.current[i];
-        const txt = textRefs.current[i];
-        const isActive = i === realActive;
-        const isPast = i < realActive;
-
-        if (dot) {
-          dot.style.width = isActive ? "10px" : "6px";
-          dot.style.height = isActive ? "10px" : "6px";
-          dot.style.background = isActive
-            ? "#b8d96b"
-            : isPast ? "rgba(122,171,58,0.55)" : "rgba(255,255,255,0.18)";
-          dot.style.boxShadow = isActive ? "0 0 8px #b8d96b88" : "none";
+        if (trackRef.current) {
+          trackRef.current.style.height = `${p * 100}%`;
         }
-        if (txt) {
-          txt.style.color = isActive
-            ? "rgba(184,217,107,0.9)" : "rgba(255,255,255,0.22)";
-        }
-      });
-
-      if (trackRef.current) {
-        trackRef.current.style.height = `${currentP * 100}%`;
       }
-    };
-    tick();
+    });
 
     return () => {
-      unsubscribe();
-      cancelAnimationFrame(rafId);
+      st.kill();
     };
   }, []);
 

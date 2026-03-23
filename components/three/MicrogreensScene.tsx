@@ -2,8 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { subscribeScrollProgress } from "@/lib/scrollProgress";
-
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
 /* ─── palette ─── */
 const BG_COL     = new THREE.Color(0x0a1505);
 const SOIL_COL   = new THREE.Color(0x2a1a0e);
@@ -166,9 +166,36 @@ export default function MicrogreensScene() {
     });
     scene.add(new THREE.Points(pGeo, pMat));
 
-    /* ── scroll state (driven by subscribeScrollProgress) ── */
-    let scrollP = 0;
-    const unsubscribe = subscribeScrollProgress((p) => { scrollP = p; });
+    /* ── scroll state via GSAP ── */
+    gsap.registerPlugin(ScrollTrigger);
+
+    const animState = {
+      stemScale: 0,
+      leafOp: 0,
+      particleOp: 0,
+      camY: 0.5,
+      camZ: 3.2,
+      glowInt: 0,
+      sunInt: 1.8,
+    };
+
+    const tl = gsap.timeline({
+      scrollTrigger: {
+        trigger: "#hero-scroll-container",
+        start: "top top",
+        end: "bottom bottom",
+        scrub: 1.5, // smooth scrubbing
+      }
+    });
+
+    // Time max is 1.0. Animate values at specific start times and durations.
+    tl.to(animState, { stemScale: 1, ease: "power2.inOut", duration: 0.6 }, 0)
+      .to(animState, { leafOp: 1, ease: "power2.inOut", duration: 0.3 }, 0.5)
+      .to(animState, { particleOp: 1, ease: "power2.inOut", duration: 0.35 }, 0.35)
+      .to(animState, { camY: 1.3, ease: "power2.inOut", duration: 1.0 }, 0)
+      .to(animState, { camZ: 2.0, ease: "power2.inOut", duration: 0.8 }, 0)
+      .to(animState, { glowInt: 1.6, ease: "power2.inOut", duration: 0.35 }, 0.5)
+      .to(animState, { sunInt: 3.5, ease: "power2.inOut", duration: 0.5 }, 0.4);
 
     /* ── render loop ── */
     let rafId: number;
@@ -177,29 +204,19 @@ export default function MicrogreensScene() {
     function tick() {
       rafId = requestAnimationFrame(tick);
       const t = clock.getElapsedTime();
-      const p = scrollP;
-
-      /* derive per-phase values directly from raw scroll 0-1 */
-      const stemScale   = lerp(0,    1,    clamp(p / 0.6));         // grows 0→60%
-      const leafOp      = phase(p, 0.50, 0.80);                     // leaves 50→80%
-      const particleOp  = phase(p, 0.35, 0.70);                     // spores 35→70%
-      const camY        = lerp(0.5,  1.3,  p);
-      const camZ        = lerp(3.2,  2.0,  clamp(p / 0.8));
-      const glowInt     = lerp(0,    1.6,  phase(p, 0.5, 0.85));
-      const sunInt      = lerp(1.8,  3.5,  phase(p, 0.4, 0.9));
 
       /* stems */
-      stems.forEach((sd) => { sd.mesh.scale.y = stemScale; });
+      stems.forEach((sd) => { sd.mesh.scale.y = animState.stemScale; });
 
       /* leaves */
       leaves.forEach((ld) => {
         const sd = stems[ld.si];
-        ld.mesh.position.set(sd.px, sd.height * stemScale, sd.pz);
+        ld.mesh.position.set(sd.px, sd.height * animState.stemScale, sd.pz);
         ld.mesh.rotation.y = ld.ry + Math.sin(t * 0.7 + ld.si) * 0.06;
         ld.mesh.rotation.z = ld.tilt;
-        const s = leafOp * (0.75 + Math.sin(ld.si * 1.3) * 0.25);
+        const s = animState.leafOp * (0.75 + Math.sin(ld.si * 1.3) * 0.25);
         ld.mesh.scale.setScalar(Math.max(0, s));
-        (ld.mesh.material as THREE.MeshStandardMaterial).opacity = leafOp;
+        (ld.mesh.material as THREE.MeshStandardMaterial).opacity = animState.leafOp;
       });
 
       /* particles */
@@ -210,17 +227,17 @@ export default function MicrogreensScene() {
         if (arr[i*3+1] > 2.8) arr[i*3+1] = -0.3;
       }
       pa.needsUpdate = true;
-      pMat.opacity = particleOp * 0.45;
+      pMat.opacity = animState.particleOp * 0.45;
 
       /* lights */
-      glow.intensity = glowInt;
-      sun.intensity  = sunInt;
+      glow.intensity = animState.glowInt;
+      sun.intensity  = animState.sunInt;
 
       /* camera */
       cam.position.x = Math.sin(t * 0.15) * 0.18;
-      cam.position.y = camY;
-      cam.position.z = camZ;
-      cam.lookAt(0, stemScale * 0.55, 0);
+      cam.position.y = animState.camY;
+      cam.position.z = animState.camZ;
+      cam.lookAt(0, animState.stemScale * 0.55, 0);
 
       renderer.render(scene, cam);
     }
@@ -240,7 +257,7 @@ export default function MicrogreensScene() {
     return () => {
       cancelAnimationFrame(rafId);
       window.removeEventListener("resize", onResize);
-      unsubscribe();
+      tl.kill();
       renderer.dispose();
       if (mount && mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement);
     };

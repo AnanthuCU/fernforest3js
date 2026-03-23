@@ -18,7 +18,7 @@ export default function HeroScene() {
         All scroll-driven logic reads window.scrollY directly via
         the shared subscribeScrollProgress() hook — no GSAP trigger needed.
       */}
-      <div style={{ position: "relative", height: "500vh", width: "100%" }}>
+      <div id="hero-scroll-container" style={{ position: "relative", height: "500vh", width: "100%" }}>
 
         {/* Sticky fullscreen panel */}
         <div style={{
@@ -139,6 +139,14 @@ export default function HeroScene() {
           }}>
             <Link
               href="/#varieties"
+              onClick={(e) => {
+                const el = document.getElementById("varieties");
+                if (el) {
+                  e.preventDefault();
+                  el.scrollIntoView({ behavior: "smooth" });
+                  window.history.pushState(null, "", "/#varieties");
+                }
+              }}
               style={{
                 display:        "inline-flex",
                 alignItems:     "center",
